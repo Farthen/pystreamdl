@@ -68,7 +68,7 @@ class StreamDL(object):
         self.auto_cleanup = auto_cleanup
         self.clean = False
     
-    def verify(self):
+    def _verify(self):
         if self.is_running():
             return False
         try:
@@ -83,19 +83,24 @@ class StreamDL(object):
         self.thread.get_cfg().remove()
         self.clean = True
     
-    def verify_cleanup(self):
-        v = self.verify()
+    def _verify_cleanup(self):
+        v = self._verify()
         if v == True and self.auto_cleanup:
             self.cleanup()
         return v
     
     def init_thread(self):
-        self.thread = StreamDLDownloadThread(self.url, self.filename, self.cfgfilename, self.exit_event, try_continue=True, throttle_bytes_sec=self.throttle_bytes_sec)
+        self.thread = StreamDLDownloadThread(self.url,
+            self.filename,
+            self.cfgfilename,
+            self.exit_event,
+            try_continue=True,
+            throttle_bytes_sec=self.throttle_bytes_sec)
     
     def start(self):
         self.init_thread()
 
-        verification_result = self.verify_cleanup()
+        verification_result = self._verify_cleanup()
         if verification_result == True:
             return # we are already done here
 
@@ -109,16 +114,16 @@ class StreamDL(object):
         return finished
     
     def is_successful(self):
-        return self.verify()
+        return self._verify()
     
     def status(self):
         cfg = self.thread.get_cfg()
         progress = cfg.get_progress()
         
         if not self.is_running() and self.thread.started:
-            self.verify_cleanup()
+            self._verify_cleanup()
         
-        verification_result = self.verify()
+        verification_result = self._verify()
         complete = verification_result
         elapsed_time = self.thread.get_cfg().get_elapsed_time()
         
@@ -130,7 +135,14 @@ class StreamDL(object):
         else:
             eta = 0
         
-        return StreamDLDownloadStatus(progress, verification_result, self.clean, speed, elapsed_time, size, expected_size, eta)
+        return StreamDLDownloadStatus(progress,
+            verification_result,
+            self.clean,
+            speed,
+            elapsed_time,
+            size,
+            expected_size,
+            eta)
     
     def is_running(self):
         return self.thread.is_alive()
@@ -292,7 +304,14 @@ class StreamDLWriter(object):
 
 
 class StreamDLDownloadThread(threading.Thread):
-    def __init__(self, url, filename, cfgfilename, exit_event, try_continue=False, throttle_bytes_sec=-1):
+    def __init__(self,
+            url,
+            filename,
+            cfgfilename,
+            exit_event,
+            try_continue=False,
+            throttle_bytes_sec=-1):
+
         self.url = url
         self.filename = filename
         self.cfg = StreamDLConfig(cfgfilename)
@@ -346,6 +365,7 @@ class StreamDLDownloadThread(threading.Thread):
             oldhead = self.cfg.get_headers()
             if head and oldhead:
                 if int(head['content-length']) != int(oldhead['content-length']):
+                    cont = False
                     print("Header size doesn't match. Will download from beginning.")
         except (KeyError, AttributeError):
             cont = False
@@ -405,11 +425,12 @@ class StreamDLDownloadThread(threading.Thread):
             
             while not self.exit_event.is_set():
                 ret, num_handles = multi.perform()
-                if self.throttle_bytes_sec != -1 and self.current_throttle != self.throttle_bytes_sec:
+                if self.current_throttle != self.throttle_bytes_sec:
                     self.current_throttle = self.throttle_bytes_sec
                     multi.remove_handle(c)
-                    c.setopt(pycurl.MAX_RECV_SPEED_LARGE, self.throttle_bytes_sec)
-                    # remove and add the handle again to force the option to stick
+                    c.setopt(pycurl.MAX_RECV_SPEED_LARGE,
+                        self.throttle_bytes_sec)
+                    # remove and add the handle again to activate option
                     multi.add_handle(c)
                 
                 self.average_speed = c.getinfo(pycurl.SPEED_DOWNLOAD)
