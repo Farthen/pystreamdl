@@ -73,12 +73,12 @@ class StreamDL(object):
             return False
         try:
             filesize = os.path.getsize(self.filename)
-        except OSError, e:
+        except OSError as e:
             return False
         return self.thread.get_cfg().verify_complete(filesize)
     
     def cleanup(self):
-        if self.running():
+        if self.is_running():
             raise StreamDLAPIError("Can only cleanup after download thread stopped")
         self.thread.get_cfg().remove()
         self.clean = True
@@ -194,7 +194,7 @@ class StreamDLConfig(object):
     def get_expected_size(self):
         try:
             return int(self.cfgdict['headers']['content-length'])
-        except KeyError, e:
+        except KeyError as e:
             return None
     
     def get_size(self):
@@ -239,7 +239,7 @@ class StreamDLConfig(object):
     def try_load(self):
         try:
             self.load()
-        except IOError, e:
+        except IOError as e:
             return False
         return True
     
@@ -250,7 +250,7 @@ class StreamDLConfig(object):
     def remove(self):
         try:
             os.remove(self.cfgfilename)
-        except IOError, e:
+        except IOError as e:
             pass
 
 
@@ -347,7 +347,7 @@ class StreamDLDownloadThread(threading.Thread):
             if head and oldhead:
                 if int(head['content-length']) != int(oldhead['content-length']):
                     print("Header size doesn't match. Will download from beginning.")
-        except KeyError, AttributeError:
+        except (KeyError, AttributeError):
             cont = False
             pass
         
@@ -439,7 +439,7 @@ def main():
             time.sleep(0.5)
             slept += 0.5
         print(dl.status())
-    except KeyboardInterrupt, e:
+    except KeyboardInterrupt as e:
         dl.stop()
 
 if __name__ == '__main__':
